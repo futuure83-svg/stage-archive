@@ -414,6 +414,11 @@ function renderData() {
     <button class="btn" onclick="exportCSV()">导出 CSV</button>
   </section>
   <section class="panel">
+    <h3>公开分享</h3>
+    <p class="text-muted">生成一份公开分享数据文件。上传到 GitHub 后，其他人就可以通过分享页面查看你的全部档案。</p>
+    <button class="btn primary" onclick="exportPublicJSON()">生成公开分享数据</button>
+</section>
+  <section class="panel">
     <h3>本地存储说明</h3>
     <p class="text-muted" style="line-height:1.9">当前版本使用浏览器 localStorage 保存数据。清理浏览器数据、换浏览器或换设备，都可能导致记录无法读取。GitHub 仓库不会保存你的个人演出记录。请定期下载备份文件。</p>
     <p class="text-muted">当前记录数量：${db.records.length} 场演出、${db.actors.length} 位演员、${db.plays.length} 部剧目。</p>
