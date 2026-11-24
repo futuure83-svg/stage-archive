@@ -533,6 +533,21 @@ function downloadFile(content,name,type) {
 function exportJSON() {
   downloadFile(JSON.stringify(db,null,2),"stage-archive-backup.json","application/json");
 }
+  function exportPublicJSON() {
+  const publicData = {
+    records: db.records,
+    actors: db.actors,
+    plays: db.plays
+  };
+
+  downloadFile(
+    JSON.stringify(publicData, null, 2),
+    "share-data.json",
+    "application/json"
+  );
+
+  alert("公开分享数据已生成！请将 share-data.json 上传到 GitHub 仓库。");
+}
 function exportCSV() {
   const rows=[["日期","时间","剧目","角色","地点","同场演员","特殊场","备注"]];
   db.records.forEach(r=>rows.push([
