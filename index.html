@@ -1,0 +1,568 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>STAGE ARCHIVE｜演出记录馆</title>
+<style>
+:root {
+  --bg:#f5f5f3; --paper:#fff; --ink:#202020;
+  --muted:#888; --line:#e8e8e5; --soft:#eeeeeb;
+  --dark:#222; --radius:12px;
+}
+* { box-sizing:border-box; }
+body {
+  margin:0; background:var(--bg); color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif;
+  font-size:14px;
+}
+button,input,select,textarea { font:inherit; }
+button { cursor:pointer; }
+.app { max-width:1200px; margin:auto; padding:30px 28px 60px; }
+header {
+  display:flex; justify-content:space-between; align-items:center;
+  padding:12px 0 28px; border-bottom:1px solid var(--line);
+}
+.brand { font-size:19px; font-weight:750; letter-spacing:2px; }
+.brand small { display:block; color:var(--muted); font-size:10px; font-weight:400; letter-spacing:3px; margin-top:6px; }
+.header-note { color:var(--muted); font-size:12px; }
+nav {
+  display:flex; gap:8px; overflow-x:auto; padding:20px 0;
+  border-bottom:1px solid var(--line);
+}
+nav button {
+  border:0; background:transparent; color:var(--muted);
+  padding:10px 16px; border-radius:8px; white-space:nowrap;
+}
+nav button.active { background:var(--dark); color:white; }
+main { padding-top:28px; }
+.page-title { font-size:25px; font-weight:650; margin:0 0 7px; }
+.page-desc { color:var(--muted); font-size:13px; margin-bottom:26px; }
+.stats-grid {
+  display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:22px;
+}
+.stat-card,.panel {
+  background:var(--paper); border:1px solid var(--line);
+  border-radius:var(--radius); padding:20px;
+}
+.stat-label { color:var(--muted); font-size:12px; }
+.stat-number { font-size:32px; font-weight:650; margin-top:12px; }
+.stat-unit { font-size:12px; color:var(--muted); margin-left:5px; }
+.section-heading {
+  display:flex; justify-content:space-between; align-items:center;
+  margin:26px 0 14px; gap:12px;
+}
+.section-heading h3 { font-size:15px; margin:0; }
+.panel { margin-bottom:16px; }
+.empty { color:var(--muted); padding:28px 10px; text-align:center; }
+.toolbar { display:flex; gap:9px; flex-wrap:wrap; margin-bottom:16px; }
+input,select,textarea {
+  border:1px solid var(--line); background:white; border-radius:8px;
+  padding:10px 12px; color:var(--ink); min-width:0;
+}
+input:focus,select:focus,textarea:focus {
+  outline:1px solid #999; border-color:#999;
+}
+.search { flex:1; min-width:180px; }
+.btn {
+  border:1px solid var(--line); background:white; color:var(--ink);
+  padding:9px 14px; border-radius:8px;
+}
+.btn:hover { background:var(--soft); }
+.btn.primary { background:var(--dark); color:white; border-color:var(--dark); }
+.btn.danger { color:#a33; }
+.btn.small { padding:6px 10px; font-size:12px; }
+table { width:100%; border-collapse:collapse; min-width:680px; }
+th,td { text-align:left; padding:14px 12px; border-bottom:1px solid var(--line); }
+th { color:var(--muted); font-size:12px; font-weight:500; }
+td { font-size:13px; }
+.table-wrap { overflow-x:auto; }
+.tag {
+  display:inline-block; background:var(--soft); border-radius:5px;
+  padding:4px 7px; font-size:11px; margin:2px;
+}
+.actions { display:flex; gap:6px; white-space:nowrap; }
+.text-muted { color:var(--muted); }
+.two-col { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+.record-list { display:flex; flex-direction:column; }
+.record-item {
+  display:flex; justify-content:space-between; align-items:center;
+  gap:12px; padding:13px 0; border-bottom:1px solid var(--line);
+}
+.record-item:last-child { border:0; }
+.record-main { min-width:0; }
+.record-main strong { display:block; margin-bottom:5px; }
+.record-main small { color:var(--muted); }
+.bar-row { margin:15px 0; }
+.bar-info { display:flex; justify-content:space-between; font-size:12px; margin-bottom:7px; }
+.bar { height:7px; background:var(--soft); border-radius:8px; overflow:hidden; }
+.bar span { display:block; height:100%; background:#444; border-radius:8px; }
+dialog {
+  width:min(560px,calc(100% - 24px)); border:0; border-radius:14px;
+  padding:0; box-shadow:0 20px 70px #0003; max-height:90vh;
+}
+dialog::backdrop { background:#0006; }
+.modal-head { padding:20px 22px; border-bottom:1px solid var(--line); }
+.modal-head h3 { margin:0; font-size:17px; }
+.modal-body { padding:20px 22px; max-height:65vh; overflow:auto; }
+.modal-foot { padding:16px 22px; border-top:1px solid var(--line); display:flex; justify-content:flex-end; gap:8px; }
+.form-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+.field { display:flex; flex-direction:column; gap:7px; }
+.field.full { grid-column:1/-1; }
+.field label { color:var(--muted); font-size:12px; }
+.field input,.field select,.field textarea { width:100%; }
+.check-list {
+  border:1px solid var(--line); border-radius:8px; padding:10px;
+  display:flex; flex-wrap:wrap; gap:10px; max-height:130px; overflow:auto;
+}
+.check-list label { display:flex; align-items:center; gap:5px; font-size:12px; color:var(--ink); }
+.check-list input { min-width:auto; }
+.summary-box {
+  background:var(--soft); padding:18px; border-radius:9px;
+  line-height:1.9; white-space:pre-wrap;
+}
+.footer { text-align:center; color:#aaa; font-size:11px; padding:35px 0 0; letter-spacing:1px; }
+.hidden { display:none!important; }
+@media(max-width:700px) {
+  .app { padding:18px 14px 40px; }
+  .header-note { display:none; }
+  .stats-grid { grid-template-columns:repeat(2,1fr); gap:9px; }
+  .stat-card { padding:15px; }
+  .stat-number { font-size:26px; }
+  .two-col { grid-template-columns:1fr; }
+  .form-grid { grid-template-columns:1fr; }
+  .field.full { grid-column:auto; }
+  .page-title { font-size:22px; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+<header>
+  <div class="brand">STAGE ARCHIVE<small>PERSONAL PERFORMANCE RECORDS</small></div>
+  <div class="header-note">私人演出档案馆 · EST. 2026</div>
+</header>
+
+<nav id="nav">
+  <button class="active" data-page="overview">总览</button>
+  <button data-page="schedule">演出排期</button>
+  <button data-page="actors">演员名单</button>
+  <button data-page="plays">剧目档案</button>
+  <button data-page="stats">数据总结</button>
+  <button data-page="data">数据管理</button>
+</nav>
+<main id="main"></main>
+<div class="footer">STAGE ARCHIVE · EVERY PERFORMANCE MATTERS</div>
+</div>
+
+<dialog id="dialog">
+  <form id="modalForm">
+    <div class="modal-head"><h3 id="modalTitle">新增记录</h3></div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-foot">
+      <button type="button" class="btn" onclick="closeModal()">取消</button>
+      <button type="submit" class="btn primary">保存记录</button>
+    </div>
+  </form>
+</dialog>
+<input type="file" id="importFile" accept=".json,application/json" hidden>
+
+<script>
+const KEY = "stage_archive_v1";
+let db = loadDB();
+let currentPage = "overview";
+let editingId = null;
+
+function loadDB() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(KEY));
+    if (saved && Array.isArray(saved.records)) {
+      return {
+        records:saved.records,
+        actors:Array.isArray(saved.actors)?saved.actors:[],
+        plays:Array.isArray(saved.plays)?saved.plays:[]
+      };
+    }
+  } catch(e) {}
+  return {records:[],actors:[],plays:[]};
+}
+function saveDB() {
+  localStorage.setItem(KEY,JSON.stringify(db));
+}
+function uid() {
+  return Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+}
+function esc(value) {
+  return String(value??"").replace(/[&<>"']/g,c=>({
+    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+  }[c]));
+}
+function fmtDate(date) {
+  if(!date) return "—";
+  return date.replaceAll("-",".");
+}
+function showPage(page) {
+  currentPage=page;
+  document.querySelectorAll("nav button").forEach(b=>{
+    b.classList.toggle("active",b.dataset.page===page);
+  });
+  render();
+}
+document.getElementById("nav").addEventListener("click",e=>{
+  const btn=e.target.closest("button[data-page]");
+  if(btn) showPage(btn.dataset.page);
+});
+function render() {
+  const pages={
+    overview:renderOverview,
+    schedule:renderSchedule,
+    actors:renderActors,
+    plays:renderPlays,
+    stats:renderStats,
+    data:renderData
+  };
+  document.getElementById("main").innerHTML=pages[currentPage]();
+}
+function heading(title,desc) {
+  return `<h1 class="page-title">${title}</h1><div class="page-desc">${desc}</div>`;
+}
+function stat(label,value,unit="项") {
+  return `<div class="stat-card"><div class="stat-label">${label}</div><div class="stat-number">${value}<span class="stat-unit">${unit}</span></div></div>`;
+}
+function empty(text) {
+  return `<div class="empty">${text}</div>`;
+}
+function getActorNames(ids) {
+  return (ids||[]).map(id=>db.actors.find(a=>a.id===id)?.name).filter(Boolean);
+}
+function getRecordPlay(r) {
+  return r.play || "未填写剧目";
+}
+function renderOverview() {
+  const records=[...db.records].sort((a,b)=>(b.date||"").localeCompare(a.date||""));
+  const special=records.filter(r=>r.special).length;
+  const plays=new Set(records.map(r=>r.play).filter(Boolean)).size;
+  const actorCount=new Set(records.flatMap(r=>r.actors||[])).size;
+  const recent=records.slice(0,5);
+  const counts={};
+  records.forEach(r=>counts[getRecordPlay(r)]=(counts[getRecordPlay(r)]||0)+1);
+  const ranking=Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  return heading("演出总览","每一场演出，都值得被认真记录。")+`
+  <div class="stats-grid">
+    ${stat("演出总场次",records.length,"场")}
+    ${stat("参与剧目",plays,"部")}
+    ${stat("合作演员",actorCount,"位")}
+    ${stat("特殊场次",special,"场")}
+  </div>
+  <div class="two-col">
+    <section class="panel">
+      <div class="section-heading"><h3>最近添加</h3><button class="btn small" onclick="showPage('schedule')">全部记录 →</button></div>
+      <div class="record-list">${recent.length?recent.map(r=>`
+        <div class="record-item"><div class="record-main">
+          <strong>${esc(r.play)} · ${esc(r.role||"角色未填写")}</strong>
+          <small>${fmtDate(r.date)}　${esc(r.venue||"地点未填写")}</small>
+        </div><span class="tag">${r.special?"特殊场":"普通场"}</span></div>`).join(""):empty("还没有演出记录")}</div>
+    </section>
+    <section class="panel">
+      <div class="section-heading"><h3>剧目场次排行</h3></div>
+      ${ranking.length?ranking.map(([name,n])=>`
+        <div class="bar-row"><div class="bar-info"><span>${esc(name)}</span><span>${n} 场</span></div>
+        <div class="bar"><span style="width:${n/Math.max(...ranking.map(x=>x[1]))*100}%"></span></div></div>
+      `).join(""):empty("添加演出后，这里会显示统计")}
+    </section>
+  </div>
+  <div class="section-heading"><h3>快速操作</h3></div>
+  <div class="panel toolbar">
+    <button class="btn primary" onclick="openRecord()">＋ 新增演出记录</button>
+    <button class="btn" onclick="openActor()">＋ 添加演员</button>
+    <button class="btn" onclick="openPlay()">＋ 添加剧目</button>
+  </div>`;
+}
+function renderSchedule() {
+  const q=(document.getElementById("recordSearch")?.value||"").toLowerCase();
+  const filter=document.getElementById("recordFilter")?.value||"";
+  let records=[...db.records].sort((a,b)=>(b.date||"").localeCompare(a.date||""));
+  records=records.filter(r=>{
+    const text=[r.date,r.play,r.role,r.venue,r.time,r.note,...getActorNames(r.actors)].join(" ").toLowerCase();
+    return text.includes(q)&&(!filter||(filter==="special"?r.special:r.play===filter));
+  });
+  return heading("演出排期","记录每一场演出，也记录每一次相遇。")+`
+  <div class="toolbar">
+    <input id="recordSearch" class="search" placeholder="搜索剧目、角色、演员、地点……" value="${esc(q)}" oninput="refreshSchedule()">
+    <select id="recordFilter" onchange="refreshSchedule()">
+      <option value="">全部记录</option>
+      <option value="special" ${filter==="special"?"selected":""}>仅特殊场</option>
+      ${db.plays.map(p=>`<option value="${esc(p.name)}" ${filter===p.name?"selected":""}>${esc(p.name)}</option>`).join("")}
+    </select>
+    <button class="btn primary" onclick="openRecord()">＋ 新增记录</button>
+  </div>
+  <div class="panel table-wrap">
+    ${records.length?`<table><thead><tr>
+      <th>日期 / 时间</th><th>剧目 / 角色</th><th>演出地点</th><th>同场演员</th><th>场次</th><th>操作</th>
+    </tr></thead><tbody>${records.map(r=>`
+      <tr>
+        <td>${fmtDate(r.date)}<br><span class="text-muted">${esc(r.time||"")}</span></td>
+        <td><strong>${esc(r.play)}</strong><br><span class="text-muted">${esc(r.role||"—")}</span></td>
+        <td>${esc(r.venue||"—")}</td>
+        <td>${getActorNames(r.actors).map(n=>`<span class="tag">${esc(n)}</span>`).join("")||"—"}</td>
+        <td>${r.special?'<span class="tag">特殊场</span>':"普通场"}</td>
+        <td><div class="actions"><button class="btn small" onclick="openRecord('${r.id}')">编辑</button><button class="btn small danger" onclick="deleteRecord('${r.id}')">删除</button></div></td>
+      </tr>`).join("")}</tbody></table>`:empty("没有找到演出记录，试试新增一场吧。")}
+  </div>`;
+}
+function refreshSchedule() {
+  const search=document.getElementById("recordSearch");
+  const filter=document.getElementById("recordFilter");
+  const q=search?.value||"",f=filter?.value||"";
+  render();
+  document.getElementById("recordSearch").value=q;
+  document.getElementById("recordFilter").value=f;
+}
+function renderActors() {
+  return heading("演员名单","建立你的演员资料库，记录每一次合作。")+`
+  <div class="toolbar"><input class="search" id="actorSearch" placeholder="搜索演员姓名……" oninput="filterCards()">
+  <button class="btn primary" onclick="openActor()">＋ 添加演员</button></div>
+  <div class="panel" id="actorCards">
+  ${db.actors.length?db.actors.map(a=>{
+    const count=db.records.filter(r=>(r.actors||[]).includes(a.id)).length;
+    return `<div class="record-item"><div class="record-main"><strong>${esc(a.name)}</strong>
+    <small>${esc(a.note||"暂无简介")} · 同场 ${count} 次</small></div>
+    <div class="actions"><button class="btn small" onclick="openActor('${a.id}')">编辑</button>
+    <button class="btn small danger" onclick="deleteActor('${a.id}')">删除</button></div></div>`;
+  }).join(""):empty("还没有演员资料，点击上方按钮添加。")}
+  </div>`;
+}
+function filterCards() {
+  const q=document.getElementById("actorSearch").value.toLowerCase();
+  document.querySelectorAll("#actorCards .record-item").forEach(el=>{
+    el.style.display=el.innerText.toLowerCase().includes(q)?"flex":"none";
+  });
+}
+function renderPlays() {
+  return heading("剧目档案","整理看过的剧目，以及每部剧的角色和演出记录。")+`
+  <div class="toolbar"><button class="btn primary" onclick="openPlay()">＋ 添加剧目</button></div>
+  <div class="panel">
+  ${db.plays.length?db.plays.map(p=>{
+    const rs=db.records.filter(r=>r.play===p.name);
+    const roles=[...new Set(rs.map(r=>r.role).filter(Boolean))];
+    return `<div class="record-item"><div class="record-main"><strong>${esc(p.name)}</strong>
+    <small>${esc(p.note||"")} · ${rs.length} 场 · 角色：${esc(roles.join("、")||"暂无记录")}</small></div>
+    <div class="actions"><button class="btn small" onclick="openPlay('${p.id}')">编辑</button>
+    <button class="btn small danger" onclick="deletePlay('${p.id}')">删除</button></div></div>`;
+  }).join(""):empty("还没有剧目档案，添加第一部剧目吧。")}
+  </div>`;
+}
+function renderStats() {
+  const records=db.records;
+  const playCounts={};
+  const actorCounts={};
+  const monthCounts={};
+  records.forEach(r=>{
+    playCounts[r.play||"未填写"]=(playCounts[r.play||"未填写"]||0)+1;
+    (r.actors||[]).forEach(id=>{
+      const name=db.actors.find(a=>a.id===id)?.name;
+      if(name) actorCounts[name]=(actorCounts[name]||0)+1;
+    });
+    const month=(r.date||"").slice(0,7);
+    if(month) monthCounts[month]=(monthCounts[month]||0)+1;
+  });
+  const rank=Object.entries(playCounts).sort((a,b)=>b[1]-a[1]);
+  const actorRank=Object.entries(actorCounts).sort((a,b)=>b[1]-a[1]);
+  const months=Object.entries(monthCounts).sort((a,b)=>a[0].localeCompare(b[0]));
+  const special=records.filter(r=>r.special).length;
+  const text=`截至目前，共记录 ${records.length} 场演出，涉及 ${Object.keys(playCounts).length} 部剧目，${db.actors.length} 位演员已加入资料库。${special?`其中包含 ${special} 场特殊场次。`:"目前还没有标记特殊场次。"}${rank.length?`记录最多的剧目是《${rank[0][0]}》，共 ${rank[0][1]} 场。`:""}${actorRank.length?`同场次数最多的演员是 ${actorRank[0][0]}，共 ${actorRank[0][1]} 次。`:""}`;
+  const maxPlay=Math.max(1,...rank.map(x=>x[1]));
+  const maxActor=Math.max(1,...actorRank.map(x=>x[1]));
+  return heading("数据总结","从数字中回顾你的演出记录。")+`
+  <div class="stats-grid">
+    ${stat("累计演出",records.length,"场")}
+    ${stat("剧目数量",Object.keys(playCounts).length,"部")}
+    ${stat("特殊场次",special,"场")}
+    ${stat("演员资料",db.actors.length,"位")}
+  </div>
+  <div class="two-col">
+    <section class="panel"><h3>剧目场次排行</h3>
+      ${rank.length?rank.map(([n,v])=>`<div class="bar-row"><div class="bar-info"><span>${esc(n)}</span><span>${v} 场</span></div><div class="bar"><span style="width:${v/maxPlay*100}%"></span></div></div>`).join(""):empty("暂无数据")}
+    </section>
+    <section class="panel"><h3>同场演员频次</h3>
+      ${actorRank.length?actorRank.map(([n,v])=>`<div class="bar-row"><div class="bar-info"><span>${esc(n)}</span><span>${v} 次</span></div><div class="bar"><span style="width:${v/maxActor*100}%"></span></div></div>`).join(""):empty("暂无数据")}
+    </section>
+  </div>
+  <section class="panel"><h3>每月演出记录</h3>
+    ${months.length?months.map(([n,v])=>`<div class="bar-row"><div class="bar-info"><span>${n}</span><span>${v} 场</span></div><div class="bar"><span style="width:${v/Math.max(1,...months.map(x=>x[1]))*100}%"></span></div></div>`).join(""):empty("暂无数据")}
+  </section>
+  <section class="panel"><h3>自动生成的文字总结</h3><div class="summary-box">${esc(text)}</div>
+  <div style="margin-top:14px"><button class="btn" onclick="copySummary()">复制总结</button></div></section>`;
+}
+function copySummary() {
+  const text=document.querySelector(".summary-box")?.innerText||"";
+  navigator.clipboard?.writeText(text).then(()=>alert("总结已复制")).catch(()=>alert("复制失败，请手动选择文字"));
+}
+function renderData() {
+  return heading("数据管理","你的记录保存在当前浏览器中，定期备份很重要。")+`
+  <section class="panel">
+    <h3>数据备份</h3><p class="text-muted">将全部演员、剧目和演出记录导出为 JSON 文件。更换设备或浏览器前，请先备份。</p>
+    <button class="btn primary" onclick="exportJSON()">导出 JSON 备份</button>
+  </section>
+  <section class="panel">
+    <h3>恢复数据</h3><p class="text-muted">选择之前导出的 JSON 文件，将数据恢复到当前浏览器。恢复会覆盖当前记录，请先备份现有数据。</p>
+    <button class="btn" onclick="document.getElementById('importFile').click()">选择 JSON 文件并导入</button>
+  </section>
+  <section class="panel">
+    <h3>导出演出表格</h3><p class="text-muted">将演出排期导出为 CSV 文件，可以用 Excel 打开。</p>
+    <button class="btn" onclick="exportCSV()">导出 CSV</button>
+  </section>
+  <section class="panel">
+    <h3>本地存储说明</h3>
+    <p class="text-muted" style="line-height:1.9">当前版本使用浏览器 localStorage 保存数据。清理浏览器数据、换浏览器或换设备，都可能导致记录无法读取。GitHub 仓库不会保存你的个人演出记录。请定期下载备份文件。</p>
+    <p class="text-muted">当前记录数量：${db.records.length} 场演出、${db.actors.length} 位演员、${db.plays.length} 部剧目。</p>
+  </section>
+  <section class="panel">
+    <h3>清空所有数据</h3><p class="text-muted">删除当前浏览器中的全部档案。此操作无法撤销。</p>
+    <button class="btn danger" onclick="clearAll()">清空数据</button>
+  </section>`;
+}
+
+function openModal(title,body,onSave) {
+  document.getElementById("modalTitle").textContent=title;
+  document.getElementById("modalBody").innerHTML=body;
+  const form=document.getElementById("modalForm");
+  form.onsubmit=e=>{
+    e.preventDefault();
+    onSave(new FormData(form));
+  };
+  document.getElementById("dialog").showModal();
+}
+function closeModal() {
+  document.getElementById("dialog").close();
+}
+function val(form,name) {
+  return String(form.get(name)||"").trim();
+}
+function openRecord(id=null) {
+  editingId=id;
+  const r=id?db.records.find(x=>x.id===id):null;
+  const selected=r?.actors||[];
+  const actorChecks=db.actors.length?db.actors.map(a=>`
+    <label><input type="checkbox" name="actors" value="${a.id}" ${selected.includes(a.id)?"checked":""}>${esc(a.name)}</label>
+  `).join(""): "请先到演员名单添加演员";
+  const body=`<div class="form-grid">
+    <div class="field"><label>演出日期 *</label><input type="date" name="date" required value="${esc(r?.date||"")}"></div>
+    <div class="field"><label>演出时间</label><input name="time" placeholder="例如 19:30" value="${esc(r?.time||"")}"></div>
+    <div class="field"><label>剧目名称 *</label><input name="play" list="playOptions" required value="${esc(r?.play||"")}"><datalist id="playOptions">${db.plays.map(p=>`<option value="${esc(p.name)}">`).join("")}</datalist></div>
+    <div class="field"><label>饰演角色</label><input name="role" value="${esc(r?.role||"")}" placeholder="填写角色名称"></div>
+    <div class="field"><label>演出地点</label><input name="venue" value="${esc(r?.venue||"")}" placeholder="剧院 / 城市"></div>
+    <div class="field"><label>场次说明</label><select name="special"><option value="0">普通场</option><option value="1" ${r?.special?"selected":""}>特殊场</option></select></div>
+    <div class="field full"><label>同场演员（可多选）</label><div class="check-list">${actorChecks}</div></div>
+    <div class="field full"><label>备注</label><textarea name="note" rows="3" placeholder="例如：首演、谢幕、特别活动……">${esc(r?.note||"")}</textarea></div>
+  </div>`;
+  openModal(id?"编辑演出记录":"新增演出记录",body,form=>{
+    const record={
+      id:r?.id||uid(),date:val(form,"date"),time:val(form,"time"),
+      play:val(form,"play"),role:val(form,"role"),venue:val(form,"venue"),
+      special:form.get("special")==="1",
+      actors:form.getAll("actors"),note:val(form,"note")
+    };
+    if(!record.date||!record.play) return;
+    if(r) db.records=db.records.map(x=>x.id===id?record:x);
+    else db.records.push(record);
+    if(!db.plays.some(p=>p.name===record.play)) db.plays.push({id:uid(),name:record.play,note:""});
+    saveDB();closeModal();render();
+  });
+}
+function deleteRecord(id) {
+  if(!confirm("确定删除这条演出记录吗？")) return;
+  db.records=db.records.filter(r=>r.id!==id);saveDB();render();
+}
+function openActor(id=null) {
+  const a=id?db.actors.find(x=>x.id===id):null;
+  openModal(id?"编辑演员":"添加演员",`
+    <div class="form-grid">
+      <div class="field full"><label>演员姓名 *</label><input name="name" required value="${esc(a?.name||"")}" placeholder="请输入演员姓名"></div>
+      <div class="field full"><label>备注 / 简介</label><textarea name="note" rows="3">${esc(a?.note||"")}</textarea></div>
+    </div>`,form=>{
+      const name=val(form,"name");
+      if(!name) return;
+      if(db.actors.some(x=>x.name===name&&x.id!==id)){alert("这个演员已经存在啦");return;}
+      if(a) {a.name=name;a.note=val(form,"note");}
+      else db.actors.push({id:uid(),name,note:val(form,"note")});
+      saveDB();closeModal();render();
+    });
+}
+function deleteActor(id) {
+  const a=db.actors.find(x=>x.id===id);
+  if(!confirm(`删除演员「${a?.name}」？历史演出记录中的关联也会一并取消。`)) return;
+  db.actors=db.actors.filter(x=>x.id!==id);
+  db.records.forEach(r=>r.actors=(r.actors||[]).filter(x=>x!==id));
+  saveDB();render();
+}
+function openPlay(id=null) {
+  const p=id?db.plays.find(x=>x.id===id):null;
+  openModal(id?"编辑剧目":"添加剧目",`
+    <div class="form-grid">
+      <div class="field full"><label>剧目名称 *</label><input name="name" required value="${esc(p?.name||"")}"></div>
+      <div class="field full"><label>剧目备注</label><textarea name="note" rows="3">${esc(p?.note||"")}</textarea></div>
+    </div>`,form=>{
+      const name=val(form,"name");
+      if(!name) return;
+      if(db.plays.some(x=>x.name===name&&x.id!==id)){alert("这个剧目已经存在啦");return;}
+      if(p) {
+        const old=p.name;p.name=name;p.note=val(form,"note");
+        db.records.forEach(r=>{if(r.play===old)r.play=name;});
+      } else db.plays.push({id:uid(),name,note:val(form,"note")});
+      saveDB();closeModal();render();
+    });
+}
+function deletePlay(id) {
+  const p=db.plays.find(x=>x.id===id);
+  if(!confirm(`删除剧目「${p?.name}」？已有演出记录不会被删除。`)) return;
+  db.plays=db.plays.filter(x=>x.id!==id);saveDB();render();
+}
+function downloadFile(content,name,type) {
+  const blob=new Blob([content],{type});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");a.href=url;a.download=name;a.click();
+  URL.revokeObjectURL(url);
+}
+function exportJSON() {
+  downloadFile(JSON.stringify(db,null,2),"stage-archive-backup.json","application/json");
+}
+function exportCSV() {
+  const rows=[["日期","时间","剧目","角色","地点","同场演员","特殊场","备注"]];
+  db.records.forEach(r=>rows.push([
+    r.date,r.time,r.play,r.role,r.venue,getActorNames(r.actors).join("、"),
+    r.special?"是":"否",r.note
+  ]));
+  const csv="\uFEFF"+rows.map(row=>row.map(v=>'"'+String(v??"").replace(/"/g,'""')+'"').join(",")).join("\r\n");
+  downloadFile(csv,"stage-archive-records.csv","text/csv;charset=utf-8");
+}
+document.getElementById("importFile").addEventListener("change",async e=>{
+  const file=e.target.files[0];if(!file)return;
+  try {
+    const imported=JSON.parse(await file.text());
+    if(!imported||!Array.isArray(imported.records)||!Array.isArray(imported.actors)||!Array.isArray(imported.plays)) {
+      throw new Error("文件格式不正确");
+    }
+    if(!confirm("导入将覆盖当前全部数据，确定继续吗？建议先导出当前备份。")) return;
+    db={
+      records:imported.records,
+      actors:imported.actors,
+      plays:imported.plays
+    };
+    saveDB();showPage("overview");alert("数据恢复成功！");
+  } catch(err) {
+    alert("导入失败："+err.message);
+  } finally {
+    e.target.value="";
+  }
+});
+function clearAll() {
+  if(!confirm("确定清空所有演出、演员和剧目数据吗？这个操作无法撤销！"))return;
+  if(!confirm("再次确认：你已经备份了需要保留的数据吗？"))return;
+  db={records:[],actors:[],plays:[]};saveDB();render();
+}
+render();
+</script>
+</body>
+</html>
