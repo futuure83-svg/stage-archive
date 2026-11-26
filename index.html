@@ -136,12 +136,12 @@ dialog::backdrop { background:#0006; }
   .page-title { font-size:22px; }
 }
 </style>
-</head>
+<style>[hidden]{display:none!important} #cloudStatus{font-size:12px} @media(max-width:600px){header{flex-wrap:wrap;gap:12px}}</style></head>
 <body>
 <div class="app">
 <header>
   <div class="brand">STAGE ARCHIVE<small>PERSONAL PERFORMANCE RECORDS</small></div>
-  <div class="header-note">私人演出档案馆 · EST. 2026</div>
+  <div><span id="cloudStatus">正在读取…</span> <button class="btn small" id="authButton" onclick="admin?logout():login()">管理员登录</button> <button class="btn small" onclick="share()">复制分享链接</button></div>
 </header>
 
 <nav id="nav">
@@ -168,9 +168,32 @@ dialog::backdrop { background:#0006; }
 </dialog>
 <input type="file" id="importFile" accept=".json,application/json" hidden>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 const KEY = "stage_archive_v1";
-let db = loadDB();
+const SUPABASE_URL = "https://vmyezfetsuunjpgyvmvp.supabase.co";
+const SUPABASE_KEY = "sb_publishable_aRApOyQM1jH47Go3btJMEA_SMzJtvGs";
+const ADMIN_UID = "030056dc-bc2d-42bb-8dd3-1cf54e06e622";
+const cloud = window.supabase && SUPABASE_URL.startsWith("https://") ? window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY) : null;
+let db = {records:[],actors:[],plays:[],profile:{}};
+let admin=false, ready=false, pending=Promise.resolve();
+function normalize(d){return {records:Array.isArray(d?.records)?d.records:[],actors:Array.isArray(d?.actors)?d.actors:[],plays:Array.isArray(d?.plays)?d.plays:[],profile:d?.profile||{}};}
+function status(t){document.getElementById("cloudStatus").textContent=t;}
+async function start(){
+ if(!cloud){status("尚未配置云端连接");render();return;}
+ try {const {data:{session}}=await cloud.auth.getSession();
+ const {data,error}=await cloud.from("stage_archive").select("data").eq("id",1).single();
+ if(error)throw error; db=normalize(data.data); ready=true;admin=session?.user?.id===ADMIN_UID;status(admin?"管理员模式":"公开浏览模式");render();}
+ catch(e){ready=false;admin=false;status("读取失败："+e.message);render();}
+}
+async function login(){if(!cloud)return alert("请先配置 Supabase");const email=prompt("管理员邮箱");if(!email)return;const password=prompt("管理员密码");if(!password)return;const {data,error}=await cloud.auth.signInWithPassword({email,password});if(error)return alert(error.message);if(data.user.id!==ADMIN_UID){await cloud.auth.signOut();return alert("此账户不是管理员");}await start();}
+async function logout(){await pending;await cloud.auth.signOut();admin=false;showPage("overview");await start();}
+function share(){navigator.clipboard.writeText(location.href.split("#")[0]).then(()=>alert("网址已复制")).catch(()=>prompt("复制网址",location.href));}
+function profileHTML(){const p=db.profile||{};return `<section class="panel"><div style="font-size:12px;letter-spacing:3px">PERFORMANCE ARCHIVE</div><h1 style="font-size:48px;margin:12px 0">${esc(String(p.name||"").trim()||"演员演出档案")}</h1><p class="text-muted">个人演出档案 · 非官方整理</p>${/^https:\/\//i.test(p.photo||"")?`<img src="${esc(p.photo)}" alt="演员照片" style="max-width:180px;max-height:240px;object-fit:contain" referrerpolicy="no-referrer">`:""}${[["生日",p.birthday],["职业",p.occupation],["社交平台",p.social],["个人简介",p.bio]].filter(x=>x[1]).map(([k,v])=>`<p><strong>${k}：</strong>${esc(v)}</p>`).join("")}${admin?'<button class="btn" onclick="editProfile()">编辑个人资料</button>':""}</section>`;}
+function editProfile(){if(!admin)return;const p=db.profile||{};openModal("编辑个人资料",`<div class="form-grid">${[["name","演员姓名"],["photo","照片网址（HTTPS，可留空）"],["birthday","生日"],["occupation","职业"],["social","社交平台"],["bio","个人简介"]].map(([k,l])=>`<div class="field full"><label>${l}</label><textarea name="${k}">${esc(p[k]||"")}</textarea></div>`).join("")}</div>`,f=>{db.profile=Object.fromEntries(f.entries());saveDB();closeModal();render();});}
+function specialLabel(r){return r.special?(r.specialType||"特殊场"):"普通场";}
+function extraStats(){return [["角色分布",r=>r.role||"未填写"],["特殊场次分布",r=>r.special?specialLabel(r):null],["演出年份",r=>r.date?.slice(0,4)]].map(([title,key])=>{const m=new Map();db.records.forEach(r=>{const k=key(r);if(k)m.set(k,(m.get(k)||0)+1);});const a=[...m].sort((x,y)=>y[1]-x[1]);return `<section class="panel"><h3>${title}</h3>${a.length?a.map(([k,v])=>`<div class="bar-row"><div class="bar-info"><span>${esc(k)}</span><span>${v} 场</span></div><div class="bar"><span style="width:${100*v/a[0][1]}%"></span></div></div>`).join(""):empty("暂无数据")}</section>`;}).join("");}
+
 let currentPage = "overview";
 let editingId = null;
 
@@ -188,7 +211,9 @@ function loadDB() {
   return {records:[],actors:[],plays:[]};
 }
 function saveDB() {
-  localStorage.setItem(KEY,JSON.stringify(db));
+ if(!admin||!ready)return;
+ const snapshot=JSON.parse(JSON.stringify(db));status("正在保存…");
+ pending=pending.then(async()=>{const {data,error}=await cloud.from("stage_archive").update({data:snapshot,updated_at:new Date().toISOString()}).eq("id",1).select("id");if(error||!data?.length)throw new Error(error?.message||"没有更新权限");status("已保存至云端");}).catch(e=>{status("保存失败："+e.message);alert("云端保存失败，请导出备份后重试。" );});
 }
 function uid() {
   return Date.now().toString(36)+Math.random().toString(36).slice(2,7);
@@ -203,6 +228,7 @@ function fmtDate(date) {
   return date.replaceAll("-",".");
 }
 function showPage(page) {
+  if(page==="data"&&!admin)return;
   currentPage=page;
   document.querySelectorAll("nav button").forEach(b=>{
     b.classList.toggle("active",b.dataset.page===page);
@@ -223,6 +249,11 @@ function render() {
     data:renderData
   };
   document.getElementById("main").innerHTML=pages[currentPage]();
+  document.getElementById("authButton").textContent=admin?"退出登录":"管理员登录";
+  document.querySelector('[data-page="data"]').hidden=!admin;
+  if(!admin){document.querySelectorAll('#main button').forEach(b=>{if(/^(openRecord|openActor|openPlay|deleteRecord|deleteActor|deletePlay|editProfile|clearAll)/.test(b.getAttribute('onclick')||''))b.remove();});document.querySelectorAll('#main .actions').forEach(e=>e.remove());}
+  if(currentPage==="overview")document.getElementById("main").insertAdjacentHTML("afterbegin",profileHTML());
+  if(currentPage==="stats")document.getElementById("main").insertAdjacentHTML("beforeend",extraStats());
 }
 function heading(title,desc) {
   return `<h1 class="page-title">${title}</h1><div class="page-desc">${desc}</div>`;
@@ -262,7 +293,7 @@ function renderOverview() {
         <div class="record-item"><div class="record-main">
           <strong>${esc(r.play)} · ${esc(r.role||"角色未填写")}</strong>
           <small>${fmtDate(r.date)}　${esc(r.venue||"地点未填写")}</small>
-        </div><span class="tag">${r.special?"特殊场":"普通场"}</span></div>`).join(""):empty("还没有演出记录")}</div>
+        </div><span class="tag">${esc(specialLabel(r))}</span></div>`).join(""):empty("还没有演出记录")}</div>
     </section>
     <section class="panel">
       <div class="section-heading"><h3>剧目场次排行</h3></div>
@@ -306,7 +337,7 @@ function renderSchedule() {
         <td><strong>${esc(r.play)}</strong><br><span class="text-muted">${esc(r.role||"—")}</span></td>
         <td>${esc(r.venue||"—")}</td>
         <td>${getActorNames(r.actors).map(n=>`<span class="tag">${esc(n)}</span>`).join("")||"—"}</td>
-        <td>${r.special?'<span class="tag">特殊场</span>':"普通场"}</td>
+        <td>${esc(specialLabel(r))}</td>
         <td><div class="actions"><button class="btn small" onclick="openRecord('${r.id}')">编辑</button><button class="btn small danger" onclick="deleteRecord('${r.id}')">删除</button></div></td>
       </tr>`).join("")}</tbody></table>`:empty("没有找到演出记录，试试新增一场吧。")}
   </div>`;
@@ -400,7 +431,7 @@ function copySummary() {
   navigator.clipboard?.writeText(text).then(()=>alert("总结已复制")).catch(()=>alert("复制失败，请手动选择文字"));
 }
 function renderData() {
-  return heading("数据管理","你的记录保存在当前浏览器中，定期备份很重要。")+`
+  return heading("数据管理","你的记录保存在云端，仍建议定期备份。")+`
   <section class="panel">
     <h3>数据备份</h3><p class="text-muted">将全部演员、剧目和演出记录导出为 JSON 文件。更换设备或浏览器前，请先备份。</p>
     <button class="btn primary" onclick="exportJSON()">导出 JSON 备份</button>
@@ -413,16 +444,7 @@ function renderData() {
     <h3>导出演出表格</h3><p class="text-muted">将演出排期导出为 CSV 文件，可以用 Excel 打开。</p>
     <button class="btn" onclick="exportCSV()">导出 CSV</button>
   </section>
-  <section class="panel">
-    <h3>公开分享</h3>
-    <p class="text-muted">生成一份公开分享数据文件。上传到 GitHub 后，其他人就可以通过分享页面查看你的全部档案。</p>
-    <button class="btn primary" onclick="exportPublicJSON()">生成公开分享数据</button>
-</section>
-  <section class="panel">
-    <h3>本地存储说明</h3>
-    <p class="text-muted" style="line-height:1.9">当前版本使用浏览器 localStorage 保存数据。清理浏览器数据、换浏览器或换设备，都可能导致记录无法读取。GitHub 仓库不会保存你的个人演出记录。请定期下载备份文件。</p>
-    <p class="text-muted">当前记录数量：${db.records.length} 场演出、${db.actors.length} 位演员、${db.plays.length} 部剧目。</p>
-  </section>
+  <section class="panel"><h3>公开分享</h3><p>朋友打开同一网址即可查看云端资料。请勿填写不宜公开的信息。</p><button class="btn" onclick="share()">复制分享链接</button></section>
   <section class="panel">
     <h3>清空所有数据</h3><p class="text-muted">删除当前浏览器中的全部档案。此操作无法撤销。</p>
     <button class="btn danger" onclick="clearAll()">清空数据</button>
@@ -430,6 +452,7 @@ function renderData() {
 }
 
 function openModal(title,body,onSave) {
+ if(!admin)return;
   document.getElementById("modalTitle").textContent=title;
   document.getElementById("modalBody").innerHTML=body;
   const form=document.getElementById("modalForm");
@@ -459,14 +482,14 @@ function openRecord(id=null) {
     <div class="field"><label>饰演角色</label><input name="role" value="${esc(r?.role||"")}" placeholder="填写角色名称"></div>
     <div class="field"><label>演出地点</label><input name="venue" value="${esc(r?.venue||"")}" placeholder="剧院 / 城市"></div>
     <div class="field"><label>场次说明</label><select name="special"><option value="0">普通场</option><option value="1" ${r?.special?"selected":""}>特殊场</option></select></div>
-    <div class="field full"><label>同场演员（可多选）</label><div class="check-list">${actorChecks}</div></div>
+    <div class="field full"><label>特殊场类型（可自定义）</label><input name="specialType" list="specialTypes" value="${esc(r?.specialType||'')}"><datalist id="specialTypes">${["整数场","首演场","毕业场","收官场","返场","特别活动场"].map(t=>`<option value="${t}">`).join("")}</datalist></div><div class="field full"><label>同场演员（可多选）</label><div class="check-list">${actorChecks}</div></div>
     <div class="field full"><label>备注</label><textarea name="note" rows="3" placeholder="例如：首演、谢幕、特别活动……">${esc(r?.note||"")}</textarea></div>
   </div>`;
   openModal(id?"编辑演出记录":"新增演出记录",body,form=>{
     const record={
       id:r?.id||uid(),date:val(form,"date"),time:val(form,"time"),
       play:val(form,"play"),role:val(form,"role"),venue:val(form,"venue"),
-      special:form.get("special")==="1",
+      special:form.get("special")==="1"||!!val(form,"specialType"),specialType:val(form,"specialType"),
       actors:form.getAll("actors"),note:val(form,"note")
     };
     if(!record.date||!record.play) return;
@@ -477,6 +500,7 @@ function openRecord(id=null) {
   });
 }
 function deleteRecord(id) {
+ if(!admin)return;
   if(!confirm("确定删除这条演出记录吗？")) return;
   db.records=db.records.filter(r=>r.id!==id);saveDB();render();
 }
@@ -496,6 +520,7 @@ function openActor(id=null) {
     });
 }
 function deleteActor(id) {
+ if(!admin)return;
   const a=db.actors.find(x=>x.id===id);
   if(!confirm(`删除演员「${a?.name}」？历史演出记录中的关联也会一并取消。`)) return;
   db.actors=db.actors.filter(x=>x.id!==id);
@@ -520,6 +545,7 @@ function openPlay(id=null) {
     });
 }
 function deletePlay(id) {
+ if(!admin)return;
   const p=db.plays.find(x=>x.id===id);
   if(!confirm(`删除剧目「${p?.name}」？已有演出记录不会被删除。`)) return;
   db.plays=db.plays.filter(x=>x.id!==id);saveDB();render();
@@ -552,13 +578,13 @@ function exportCSV() {
   const rows=[["日期","时间","剧目","角色","地点","同场演员","特殊场","备注"]];
   db.records.forEach(r=>rows.push([
     r.date,r.time,r.play,r.role,r.venue,getActorNames(r.actors).join("、"),
-    r.special?"是":"否",r.note
+    specialLabel(r),r.note
   ]));
   const csv="\uFEFF"+rows.map(row=>row.map(v=>'"'+String(v??"").replace(/"/g,'""')+'"').join(",")).join("\r\n");
   downloadFile(csv,"stage-archive-records.csv","text/csv;charset=utf-8");
 }
 document.getElementById("importFile").addEventListener("change",async e=>{
-  const file=e.target.files[0];if(!file)return;
+  if(!admin)return;const file=e.target.files[0];if(!file)return;
   try {
     const imported=JSON.parse(await file.text());
     if(!imported||!Array.isArray(imported.records)||!Array.isArray(imported.actors)||!Array.isArray(imported.plays)) {
@@ -568,7 +594,7 @@ document.getElementById("importFile").addEventListener("change",async e=>{
     db={
       records:imported.records,
       actors:imported.actors,
-      plays:imported.plays
+      plays:imported.plays,profile:imported.profile||{}
     };
     saveDB();showPage("overview");alert("数据恢复成功！");
   } catch(err) {
@@ -578,11 +604,12 @@ document.getElementById("importFile").addEventListener("change",async e=>{
   }
 });
 function clearAll() {
+ if(!admin)return;
   if(!confirm("确定清空所有演出、演员和剧目数据吗？这个操作无法撤销！"))return;
   if(!confirm("再次确认：你已经备份了需要保留的数据吗？"))return;
   db={records:[],actors:[],plays:[]};saveDB();render();
 }
-render();
+render();start();
 </script>
 </body>
 </html>
