@@ -135,8 +135,8 @@ dialog::backdrop { background:#0006; }
   .field.full { grid-column:auto; }
   .page-title { font-size:22px; }
 }
-</style>
-<style>[hidden]{display:none!important} #cloudStatus{font-size:12px} @media(max-width:600px){header{flex-wrap:wrap;gap:12px}}</style></head>
+.photo-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.photo-grid img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px}.photo-grid a{display:block}article.panel{margin-bottom:14px}</style>
+<style>[hidden]{display:none!important} #cloudStatus{font-size:12px} @media(max-width:600px){header{flex-wrap:wrap;gap:12px}}.photo-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.photo-grid img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px}.photo-grid a{display:block}article.panel{margin-bottom:14px}</style></head>
 <body>
 <div class="app">
 <header>
@@ -148,7 +148,7 @@ dialog::backdrop { background:#0006; }
   <button class="active" data-page="overview">总览</button>
   <button data-page="schedule">演出排期</button>
   <button data-page="actors">演员名单</button>
-  <button data-page="plays">剧目档案</button>
+  <button data-page="news">资讯动态</button><button data-page="gallery">照片图库</button><button data-page="plays">剧目档案</button>
   <button data-page="stats">数据总结</button>
   <button data-page="data">数据管理</button>
 </nav>
@@ -177,7 +177,7 @@ const ADMIN_UID = "030056dc-bc2d-42bb-8dd3-1cf54e06e622";
 const cloud = window.supabase && SUPABASE_URL.startsWith("https://") ? window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY) : null;
 let db = {records:[],actors:[],plays:[],profile:{}};
 let admin=false, ready=false, pending=Promise.resolve();
-function normalize(d){return {records:Array.isArray(d?.records)?d.records:[],actors:Array.isArray(d?.actors)?d.actors:[],plays:Array.isArray(d?.plays)?d.plays:[],profile:d?.profile||{}};}
+function normalize(d){return {records:Array.isArray(d?.records)?d.records:[],actors:Array.isArray(d?.actors)?d.actors:[],plays:Array.isArray(d?.plays)?d.plays:[],profile:d?.profile||{},posts:Array.isArray(d?.posts)?d.posts:[]};}
 function status(t){document.getElementById("cloudStatus").textContent=t;}
 async function start(){
  if(!cloud){status("尚未配置云端连接");render();return;}
@@ -244,7 +244,7 @@ function render() {
     overview:renderOverview,
     schedule:renderSchedule,
     actors:renderActors,
-    plays:renderPlays,
+    plays:renderPlays, news:()=>renderPosts(false), gallery:()=>renderPosts(true),
     stats:renderStats,
     data:renderData
   };
@@ -253,6 +253,7 @@ function render() {
   document.querySelector('[data-page="data"]').hidden=!admin;
   if(!admin){document.querySelectorAll('#main button').forEach(b=>{if(/^(openRecord|openActor|openPlay|deleteRecord|deleteActor|deletePlay|editProfile|clearAll)/.test(b.getAttribute('onclick')||''))b.remove();});document.querySelectorAll('#main .actions').forEach(e=>e.remove());}
   if(currentPage==="overview")document.getElementById("main").insertAdjacentHTML("afterbegin",profileHTML());
+  if(currentPage==="overview")document.getElementById("main").insertAdjacentHTML("beforeend",`<section class="panel"><h3>最新资讯</h3>${postCards(sortedPosts().slice(0,3))}</section>`);
   if(currentPage==="stats")document.getElementById("main").insertAdjacentHTML("beforeend",extraStats());
 }
 function heading(title,desc) {
@@ -313,12 +314,12 @@ function renderOverview() {
 function renderSchedule() {
   const q=(document.getElementById("recordSearch")?.value||"").toLowerCase();
   const filter=document.getElementById("recordFilter")?.value||"";
-  let records=[...db.records].sort((a,b)=>(b.date||"").localeCompare(a.date||""));
+  let records=orderedRecords().reverse();
   records=records.filter(r=>{
     const text=[r.date,r.play,r.role,r.venue,r.time,r.note,...getActorNames(r.actors)].join(" ").toLowerCase();
     return text.includes(q)&&(!filter||(filter==="special"?r.special:r.play===filter));
   });
-  return heading("演出排期","记录每一场演出，也记录每一次相遇。")+`
+  return heading("总排期","累计 "+db.records.length+" 场 · 当前筛选 "+records.length+" 场")+`
   <div class="toolbar">
     <input id="recordSearch" class="search" placeholder="搜索剧目、角色、演员、地点……" value="${esc(q)}" oninput="refreshSchedule()">
     <select id="recordFilter" onchange="refreshSchedule()">
@@ -330,10 +331,10 @@ function renderSchedule() {
   </div>
   <div class="panel table-wrap">
     ${records.length?`<table><thead><tr>
-      <th>日期 / 时间</th><th>剧目 / 角色</th><th>演出地点</th><th>同场演员</th><th>场次</th><th>操作</th>
+      <th>累计场次</th><th>日期 / 时间</th><th>剧目 / 角色</th><th>演出地点</th><th>同场演员</th><th>场次</th><th>操作</th>
     </tr></thead><tbody>${records.map(r=>`
       <tr>
-        <td>${fmtDate(r.date)}<br><span class="text-muted">${esc(r.time||"")}</span></td>
+        <td>No.${recordNumber(r)}</td><td>${fmtDate(r.date)}<br><span class="text-muted">${esc(r.time||"")}</span></td>
         <td><strong>${esc(r.play)}</strong><br><span class="text-muted">${esc(r.role||"—")}</span></td>
         <td>${esc(r.venue||"—")}</td>
         <td>${getActorNames(r.actors).map(n=>`<span class="tag">${esc(n)}</span>`).join("")||"—"}</td>
@@ -377,7 +378,7 @@ function renderPlays() {
   ${db.plays.length?db.plays.map(p=>{
     const rs=db.records.filter(r=>r.play===p.name);
     const roles=[...new Set(rs.map(r=>r.role).filter(Boolean))];
-    return `<div class="record-item"><div class="record-main"><strong>${esc(p.name)}</strong>
+    return `<div class="record-item"><div class="record-main"><strong>${esc(p.name)}</strong> <button class="btn small" onclick="viewPlay(${db.plays.indexOf(p)})">查看资料</button>
     <small>${esc(p.note||"")} · ${rs.length} 场 · 角色：${esc(roles.join("、")||"暂无记录")}</small></div>
     <div class="actions"><button class="btn small" onclick="openPlay('${p.id}')">编辑</button>
     <button class="btn small danger" onclick="deletePlay('${p.id}')">删除</button></div></div>`;
@@ -610,6 +611,18 @@ function clearAll() {
   db={records:[],actors:[],plays:[]};saveDB();render();
 }
 render();start();
+
+function orderedRecords(){return [...db.records].sort((a,b)=>`${a.date||''} ${a.time||''}`.localeCompare(`${b.date||''} ${b.time||''}`));}
+function recordNumber(r){return orderedRecords().indexOf(r)+1;}
+let postFilter='';
+function sortedPosts(){return [...(db.posts||[])].sort((a,b)=>Number(!!b.pin)-Number(!!a.pin)||String(b.date).localeCompare(String(a.date))||String(b.id).localeCompare(String(a.id)));}
+function safeURL(u){return /^https:\/\//i.test(u||'')?esc(u):'';}
+function postCards(posts,gallery=false){return posts.length?posts.map(p=>`<article class="panel"><div class="text-muted">${p.pin?'置顶 · ':''}${esc(p.date)} · ${esc(p.category||'动态')} · ${esc(db.plays.find(x=>x.id===p.playId)?.name||'个人动态')}</div><h3>${esc(p.title||'')}</h3><p style="white-space:pre-wrap;overflow-wrap:anywhere">${esc(p.body||'')}</p><div class="photo-grid">${(p.images||[]).filter(safeURL).map(u=>`<a href="${safeURL(u)}" target="_blank" rel="noopener noreferrer"><img loading="lazy" src="${safeURL(u)}" alt="档案照片"></a>`).join('')}</div><p class="text-muted">${esc(p.source||'')}${safeURL(p.url)?` · <a href="${safeURL(p.url)}" target="_blank" rel="noopener noreferrer">查看原文</a>`:''}</p>${admin?`<button class="btn small" onclick="editPost(${db.posts.indexOf(p)})">编辑</button> <button class="btn small danger" onclick="removePost(${db.posts.indexOf(p)})">删除</button>`:''}</article>`).join(''):empty('暂无资料');}
+function renderPosts(gallery){const posts=sortedPosts().filter(p=>(!postFilter||p.playId===postFilter)&&(!gallery||(p.images||[]).length));return heading(gallery?'照片图库':'资讯动态','非官方整理 · 按剧目归档')+`<div class="toolbar"><select onchange="postFilter=this.value;render()"><option value="">全部剧目</option>${db.plays.map(p=>`<option value="${esc(p.id)}" ${p.id===postFilter?'selected':''}>${esc(p.name)}</option>`).join('')}</select>${admin?'<button class="btn primary" onclick="editPost(-1)">＋ 发布动态 / 上传照片</button>':''}</div>`+postCards(posts,gallery);}
+function viewPlay(i){const p=db.plays[i];if(!p)return;postFilter=p.id;showPage('news');}
+function removePost(i){if(!admin||!confirm('删除这条动态？'))return;db.posts.splice(i,1);saveDB();render();}
+function editPost(i){if(!admin||!ready)return;const p=db.posts?.[i]||{};openModal('发布 / 编辑动态',`<div class="form-grid">${[['title','标题'],['date','日期'],['category','分类（官宣、剧照、采访等）'],['source','来源'],['url','原文 HTTPS 链接']].map(([k,l])=>`<div class="field full"><label>${l}</label><input name="${k}" ${k==='date'?'type="date" required':''} value="${esc(p[k]||(k==='date'?new Date().toISOString().slice(0,10):''))}"></div>`).join('')}<div class="field full"><label>关联剧目</label><select name="playId"><option value="">个人动态</option>${db.plays.map(x=>`<option value="${esc(x.id)}" ${(p.playId||postFilter)===x.id?'selected':''}>${esc(x.name)}</option>`).join('')}</select></div><div class="field full"><label>正文</label><textarea name="body">${esc(p.body||'')}</textarea></div><div class="field full"><label>已有图片网址（每行一个，删除网址即可移除展示）</label><textarea name="images">${esc((p.images||[]).join('\n'))}</textarea><label>上传图片（最多9张，每张不超过5MB）</label><input name="files" type="file" accept="image/jpeg,image/png,image/webp" multiple></div><label><input type="checkbox" name="pin" ${p.pin?'checked':''}> 置顶</label></div>`,async f=>{const btn=document.querySelector('#modalForm button[type=submit]');if(btn.disabled)return;btn.disabled=true;try{let images=String(f.get('images')||'').split(/\s+/).filter(safeURL);const files=f.getAll('files').filter(x=>x.size);if(images.length+files.length>9)throw Error('最多9张图片');for(const file of files){if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>5*1024*1024)throw Error('仅支持5MB以内的 JPG、PNG、WebP');}for(const file of files){const path=ADMIN_UID+'/'+crypto.randomUUID()+'.'+({'image/jpeg':'jpg','image/png':'png','image/webp':'webp'}[file.type]);const {error}=await cloud.storage.from('archive-photos').upload(path,file,{contentType:file.type});if(error)throw error;images.push(cloud.storage.from('archive-photos').getPublicUrl(path).data.publicUrl);}const post={id:p.id||uid(),images,pin:f.has('pin')};for(const k of ['title','date','category','source','url','playId','body'])post[k]=String(f.get(k)||'');db.posts ||= [];if(i<0)db.posts.push(post);else db.posts[i]=post;saveDB();closeModal();render();}catch(e){alert('发布失败：'+e.message);}finally{btn.disabled=false;}});}
+
 </script>
 </body>
 </html>
