@@ -137,7 +137,7 @@ dialog::backdrop { background:#0006; }
   .page-title { font-size:22px; }
 }
 .photo-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.photo-grid img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px}.photo-grid a{display:block}article.panel{margin-bottom:14px}</style>
-<style>[hidden]{display:none!important} #cloudStatus{font-size:12px} @media(max-width:600px){header{flex-wrap:wrap;gap:12px}}.photo-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.photo-grid img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px}.photo-grid a{display:block}article.panel{margin-bottom:14px}</style></head>
+<style>[hidden]{display:none!important} #cloudStatus{font-size:12px} @media(max-width:600px){header{flex-wrap:wrap;gap:12px}}.photo-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.photo-grid img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px}.photo-grid a{display:block}article.panel{margin-bottom:14px}</style><style>.hero3{display:grid;grid-template-columns:1.6fr 1fr;gap:28px;background:#171717;color:#fff;padding:36px;margin-bottom:24px;border-radius:8px}.hero3 h1{font-size:clamp(36px,7vw,82px);line-height:1.1;margin:20px 0;overflow-wrap:anywhere}.hero3 img{width:100%;height:100%;max-height:420px;object-fit:cover}.hero3 .eyebrow{letter-spacing:4px;font-size:11px}.hero3 p{white-space:pre-wrap}.role3{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px}.role3 img{width:100%;aspect-ratio:4/3;object-fit:cover}.heat3{display:grid;grid-auto-flow:column;grid-template-rows:repeat(7,13px);grid-auto-columns:13px;gap:3px;width:max-content}.heat3 span{border-radius:2px}.timeline3{border-left:2px solid #aaa;padding-left:20px;margin:18px}.timeline3 article{margin-bottom:22px}.ticket3{padding:24px;background:#fafafa;color:#111;border:2px dashed #555}.hero3 .btn{color:#111;background:white}@media(max-width:650px){.hero3{grid-template-columns:1fr;padding:24px}}</style></head>
 <body>
 <div class="app">
 <header>
@@ -150,11 +150,11 @@ dialog::backdrop { background:#0006; }
   <button data-page="schedule">演出排期</button>
   <button data-page="actors">演员名单</button>
   <button data-page="news">资讯动态</button><button data-page="gallery">照片图库</button><button data-page="plays">剧目档案</button>
-  <button data-page="stats">数据总结</button>
+  <button data-page="timeline">生涯时间轴</button><button data-page="roles">角色博物馆</button><button data-page="stats">数据总结</button>
   <button data-page="data">数据管理</button>
 </nav>
 <main id="main"></main>
-<div class="footer">STAGE ARCHIVE · EVERY PERFORMANCE MATTERS</div>
+<div class="footer">STAGE ARCHIVE 3.0 · EVERY PERFORMANCE MATTERS</div>
 </div>
 
 <dialog id="dialog">
@@ -178,7 +178,7 @@ const ADMIN_UID = "030056dc-bc2d-42bb-8dd3-1cf54e06e622";
 const cloud = window.supabase && SUPABASE_URL.startsWith("https://") ? window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY) : null;
 let db = {records:[],actors:[],plays:[],profile:{}};
 let admin=false, ready=false, pending=Promise.resolve();
-function normalize(d){return {records:Array.isArray(d?.records)?d.records:[],actors:Array.isArray(d?.actors)?d.actors:[],plays:Array.isArray(d?.plays)?d.plays:[],profile:d?.profile||{},posts:Array.isArray(d?.posts)?d.posts:[]};}
+function normalize(d){return {...(d||{}),rolesMeta:d?.rolesMeta||{},records:Array.isArray(d?.records)?d.records:[],actors:Array.isArray(d?.actors)?d.actors:[],plays:Array.isArray(d?.plays)?d.plays:[],profile:d?.profile||{},posts:Array.isArray(d?.posts)?d.posts:[]};}
 function status(t){document.getElementById("cloudStatus").textContent=t;}
 async function start(){
  if(!cloud){status("尚未配置云端连接");render();return;}
@@ -191,7 +191,7 @@ async function login(){if(!cloud)return alert("请先配置 Supabase");const ema
 async function logout(){await pending;await cloud.auth.signOut();admin=false;showPage("overview");await start();}
 function share(){navigator.clipboard.writeText(location.href.split("#")[0]).then(()=>alert("网址已复制")).catch(()=>prompt("复制网址",location.href));}
 function profileHTML(){const p=db.profile||{};return `<section class="panel"><div style="font-size:12px;letter-spacing:3px">PERFORMANCE ARCHIVE</div><h1 style="font-size:48px;margin:12px 0">${esc(String(p.name||"").trim()||"演员演出档案")}</h1><p class="text-muted">个人演出档案 · 非官方整理</p>${/^https:\/\//i.test(p.photo||"")?`<img src="${esc(p.photo)}" alt="演员照片" style="max-width:180px;max-height:240px;object-fit:contain" referrerpolicy="no-referrer">`:""}${[["生日",p.birthday],["职业",p.occupation],["社交平台",p.social],["个人简介",p.bio]].filter(x=>x[1]).map(([k,v])=>`<p><strong>${k}：</strong>${esc(v)}</p>`).join("")}${admin?'<button class="btn" onclick="editProfile()">编辑个人资料</button>':""}</section>`;}
-function editProfile(){if(!admin)return;const p=db.profile||{};openModal("编辑个人资料",`<div class="form-grid">${[["name","演员姓名"],["photo","照片网址（HTTPS，可留空）"],["birthday","生日"],["occupation","职业"],["social","社交平台"],["bio","个人简介"]].map(([k,l])=>`<div class="field full"><label>${l}</label><textarea name="${k}">${esc(p[k]||"")}</textarea></div>`).join("")}</div>`,f=>{db.profile=Object.fromEntries(f.entries());saveDB();closeModal();render();});}
+function editProfile(){if(!admin)return;const p=db.profile||{};openModal("编辑个人资料",`<div class="form-grid">${[["name","演员姓名"],["photo","照片网址（HTTPS，可留空）"],["birthday","生日"],["occupation","职业"],["social","社交平台"],["bio","个人简介"]].map(([k,l])=>`<div class="field full"><label>${l}</label><textarea name="${k}">${esc(p[k]||"")}</textarea></div>`).join("")}</div>`,f=>{db.profile={...db.profile,...Object.fromEntries(f.entries())};saveDB();closeModal();render();});}
 function specialLabel(r){return r.special?(r.specialType||"特殊场"):"普通场";}
 function extraStats(){return [["角色分布",r=>r.role||"未填写"],["特殊场次分布",r=>r.special?specialLabel(r):null],["演出年份",r=>r.date?.slice(0,4)]].map(([title,key])=>{const m=new Map();db.records.forEach(r=>{const k=key(r);if(k)m.set(k,(m.get(k)||0)+1);});const a=[...m].sort((x,y)=>y[1]-x[1]);return `<section class="panel"><h3>${title}</h3>${a.length?a.map(([k,v])=>`<div class="bar-row"><div class="bar-info"><span>${esc(k)}</span><span>${v} 场</span></div><div class="bar"><span style="width:${100*v/a[0][1]}%"></span></div></div>`).join(""):empty("暂无数据")}</section>`;}).join("");}
 
@@ -242,7 +242,7 @@ document.getElementById("nav").addEventListener("click",e=>{
 });
 function render() {
   const pages={
-    overview:renderOverview,
+    overview:renderOverview, timeline:timeline3, roles:roles3,
     schedule:renderSchedule,
     actors:renderActors,
     plays:renderPlays, news:()=>renderPosts(false), gallery:()=>renderPosts(true),
@@ -253,9 +253,9 @@ function render() {
   document.getElementById("authButton").textContent=admin?"退出登录":"管理员登录";
   document.querySelector('[data-page="data"]').hidden=!admin;
   if(!admin){document.querySelectorAll('#main button').forEach(b=>{if(/^(openRecord|openActor|openPlay|deleteRecord|deleteActor|deletePlay|editProfile|clearAll)/.test(b.getAttribute('onclick')||''))b.remove();});document.querySelectorAll('#main .actions').forEach(e=>e.remove());}
-  if(currentPage==="overview")document.getElementById("main").insertAdjacentHTML("afterbegin",profileHTML());
+  if(currentPage==="overview")document.getElementById("main").insertAdjacentHTML("afterbegin",hero3()+home3());
   if(currentPage==="overview")document.getElementById("main").insertAdjacentHTML("beforeend",`<section class="panel"><h3>最新资讯</h3>${postCards(sortedPosts().slice(0,3))}</section>`);
-  if(currentPage==="stats")document.getElementById("main").insertAdjacentHTML("beforeend",extraStats());
+  if(currentPage==="stats")document.getElementById("main").insertAdjacentHTML("beforeend",extraStats()+heat3());
 }
 function heading(title,desc) {
   return `<h1 class="page-title">${title}</h1><div class="page-desc">${desc}</div>`;
@@ -339,7 +339,7 @@ function renderSchedule() {
         <td><strong>${esc(r.play)}</strong><br><span class="text-muted">${esc(r.role||"—")}</span></td>
         <td>${esc(r.venue||"—")}</td>
         <td>${getActorNames(r.actors).map(n=>`<span class="tag">${esc(n)}</span>`).join("")||"—"}</td>
-        <td>${esc(specialLabel(r))}</td>
+        <td>${esc(specialLabel(r))}<br><button class="btn small" onclick="ticket3(${db.records.indexOf(r)})">纪念票根</button></td>
         <td><div class="actions"><button class="btn small" onclick="openRecord('${r.id}')">编辑</button><button class="btn small danger" onclick="deleteRecord('${r.id}')">删除</button></div></td>
       </tr>`).join("")}</tbody></table>`:empty("没有找到演出记录，试试新增一场吧。")}
   </div>`;
@@ -593,11 +593,7 @@ document.getElementById("importFile").addEventListener("change",async e=>{
       throw new Error("文件格式不正确");
     }
     if(!confirm("导入将覆盖当前全部数据，确定继续吗？建议先导出当前备份。")) return;
-    db={
-      records:imported.records,
-      actors:imported.actors,
-      plays:imported.plays,profile:imported.profile||{}
-    };
+    db=normalize(imported);
     saveDB();showPage("overview");alert("数据恢复成功！");
   } catch(err) {
     alert("导入失败："+err.message);
@@ -611,7 +607,7 @@ function clearAll() {
   if(!confirm("再次确认：你已经备份了需要保留的数据吗？"))return;
   db={records:[],actors:[],plays:[]};saveDB();render();
 }
-render();start();
+
 
 function orderedRecords(){return [...db.records].sort((a,b)=>`${a.date||''} ${a.time||''}`.localeCompare(`${b.date||''} ${b.time||''}`));}
 function recordNumber(r){return orderedRecords().indexOf(r)+1;}
@@ -625,6 +621,26 @@ function viewPlay(i){const p=db.plays[i];if(!p)return;postFilter=p.id;showPage('
 function removePost(i){if(!admin||!confirm('删除这条动态？'))return;db.posts.splice(i,1);saveDB();render();}
 function editPost(i){if(!admin||!ready)return;const p=db.posts?.[i]||{};openModal('发布 / 编辑动态',`<div class="form-grid">${[['title','标题'],['date','日期'],['category','分类（官宣、剧照、采访等）'],['source','来源'],['url','原文 HTTPS 链接'],['videoTitle','视频标题（选填）'],['videoUrl','视频 HTTPS 链接（选填）'],['videoCover','视频封面 HTTPS 图片网址（选填）']].map(([k,l])=>`<div class="field full"><label>${l}</label><input name="${k}" ${k==='date'?'type="date" required':''} value="${esc(p[k]||(k==='date'?new Date().toISOString().slice(0,10):''))}"></div>`).join('')}<div class="field full"><label>关联剧目</label><select name="playId"><option value="">个人动态</option>${db.plays.map(x=>`<option value="${esc(x.id)}" ${(p.playId||postFilter)===x.id?'selected':''}>${esc(x.name)}</option>`).join('')}</select></div><div class="field full"><label>正文</label><textarea name="body">${esc(p.body||'')}</textarea></div><div class="field full"><label>已有图片网址（每行一个，删除网址即可移除展示）</label><textarea name="images">${esc((p.images||[]).join('\n'))}</textarea><label>上传图片（最多9张，每张不超过5MB）</label><input name="files" type="file" accept="image/jpeg,image/png,image/webp" multiple></div><label><input type="checkbox" name="pin" ${p.pin?'checked':''}> 置顶</label></div>`,async f=>{const btn=document.querySelector('#modalForm button[type=submit]');if(btn.disabled)return;btn.disabled=true;try{let images=String(f.get('images')||'').split(/\s+/).filter(safeURL);const files=f.getAll('files').filter(x=>x.size);if(images.length+files.length>9)throw Error('最多9张图片');for(const file of files){if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>5*1024*1024)throw Error('仅支持5MB以内的 JPG、PNG、WebP');}for(const file of files){const path=ADMIN_UID+'/'+crypto.randomUUID()+'.'+({'image/jpeg':'jpg','image/png':'png','image/webp':'webp'}[file.type]);const {error}=await cloud.storage.from('stage-media').upload(path,file,{contentType:file.type});if(error)throw error;images.push(cloud.storage.from('stage-media').getPublicUrl(path).data.publicUrl);}const post={id:p.id||uid(),images,pin:f.has('pin')};for(const k of ['title','date','category','source','url','playId','body','videoTitle','videoUrl','videoCover'])post[k]=String(f.get(k)||'');db.posts ||= [];if(i<0)db.posts.push(post);else db.posts[i]=post;saveDB();closeModal();render();}catch(e){alert('发布失败：'+e.message);}finally{btn.disabled=false;}});}
 
+
+function localDay3(){return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date()).replace(/\//g,'-');}
+function day3(){const p=new Intl.DateTimeFormat('en',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());return ['year','month','day'].map(k=>p.find(x=>x.type===k).value).join('-');}
+function past3(){return orderedRecords().filter(r=>r.date&&r.date<=day3());}
+function hero3(){const p=db.profile||{};return `<section class="hero3"><div><div class="eyebrow">STAGE ARCHIVE / VOL. 03</div><h1>${esc(p.name||'演员演出档案')}</h1><p>ACTOR · PERFORMANCE ARCHIVE</p>${[p.occupation,p.birthday,p.social,p.bio].filter(Boolean).map(x=>`<p>${esc(x)}</p>`).join('')}${admin?'<button class="btn" onclick="editProfile()">编辑个人资料</button>':''}</div><div>${safeURL(p.photo)?`<img src="${safeURL(p.photo)}" alt="演员肖像">`:'<div style="border:1px solid #777;min-height:180px;display:grid;place-items:center;letter-spacing:3px">PORTRAIT / 待收录</div>'}</div></section>`;}
+function next3(){return orderedRecords().find(r=>r.date&&(r.date>day3()|| (r.date===day3()&&/^\d{2}:\d{2}$/.test(r.time||'')&&new Date(r.date+'T'+r.time+':00+08:00')>new Date())));}
+function tick3(){const el=document.getElementById('countdown3');if(!el)return;const r=next3();if(!r){el.textContent='暂无未来排期';return;}const known=/^\d{2}:\d{2}$/.test(r.time||'');const target=new Date(r.date+'T'+(known?r.time:'00:00')+':00+08:00');const n=Math.max(0,Math.floor((target-Date.now())/1000));el.textContent=known?`${Math.floor(n/86400)} 天 ${Math.floor(n/3600)%24} 小时 ${Math.floor(n/60)%60} 分 ${n%60} 秒`:`${r.date} · 时间待定`;}
+function home3(){const r=next3(),n=past3().length,goal=(Math.floor(n/50)+1)*50;const today=past3().filter(x=>x.date.slice(5)===day3().slice(5)&&x.date<day3());return `<div class="two-col"><section class="panel"><h3>下一场演出 / NEXT</h3>${r?`<strong>${esc(r.play)}</strong><p>${esc(r.date)} ${esc(r.time||'')} · ${esc(r.venue||'')}</p>`:''}<p id="countdown3">${r?'计算中…':'暂无未来排期'}</p></section><section class="panel"><h3>演出里程碑</h3><div class="stat-number">${n} / ${goal}</div><div class="bar"><span style="width:${100*n/goal}%"></span></div><p>距离下一整数里程碑还有 ${goal-n} 场（按已到日期的存档统计）</p></section></div><section class="panel"><h3>历史上的今天</h3>${today.length?today.map(x=>`<p>${esc(x.date)} · ${esc(x.play)} · ${esc(x.role||'')}</p>`).join(''):empty('往年今日暂无收录')}</section>`;}
+function timeline3(){const seen=new Set(),rs=past3();return heading('演艺生涯时间轴','根据已收录排期自动生成，不代表完整职业履历')+`<section class="panel timeline3">${rs.map((r,i)=>{const tags=[];if(!i)tags.push('档案起点');const k=JSON.stringify([r.play,r.role]);if(!seen.has(k)){seen.add(k);tags.push('首次收录该剧目 / 角色');}if((i+1)%50===0)tags.push('累计第 '+(i+1)+' 场');if(r.special)tags.push(specialLabel(r));return tags.length?`<article><small>${esc(r.date)}</small><h3>${esc(r.play)} · ${esc(r.role||'')}</h3><p>${esc(tags.join(' / '))}</p><button class="btn small" onclick="ticket3(${db.records.indexOf(r)})">纪念票根</button></article>`:'';}).join('')||empty('暂无历史记录')}</section>`;}
+function roleGroups3(){const m=new Map();orderedRecords().filter(r=>r.role).forEach(r=>{const k=JSON.stringify([r.play||'',r.role]);if(!m.has(k))m.set(k,[]);m.get(k).push(r);});return [...m];}
+function roles3(){return heading('角色博物馆','每一个角色，都是一段独立的舞台记忆')+`<div class="role3">${roleGroups3().map(([k,rs],i)=>{const r=rs[0],m=db.rolesMeta?.[k]||{};return `<article class="panel">${safeURL(m.photo)?`<img src="${safeURL(m.photo)}" alt="角色照片">`:''}<small>${esc(r.play)}</small><h2>${esc(r.role)}</h2><p>${rs.length} 场收录 · 首次收录 ${esc(r.date)}</p><p>${esc(m.bio||'')}</p><button class="btn small" onclick="roleDetail3(${i})">查看角色档案</button> ${admin?`<button class="btn small" onclick="editRole3(${i})">编辑角色</button>`:''}</article>`;}).join('')||empty('暂无角色记录')}</div><div id="roleDetail3"></div>`;}
+function roleDetail3(i){const [k,rs]=roleGroups3()[i],r=rs[0],m=db.rolesMeta?.[k]||{},p=db.plays.find(x=>x.name===r.play);document.getElementById('roleDetail3').innerHTML=`<section class="panel"><h2>${esc(r.role)} · ${esc(r.play)}</h2><p>${esc(m.quote||'')}</p><h3>角色排期</h3>${rs.map(x=>`<p>${esc(x.date)} ${esc(x.time||'')} <button class="btn small" onclick="ticket3(${db.records.indexOf(x)})">票根</button></p>`).join('')}<h3>关联剧目物料（不限定角色）</h3>${postCards(p?sortedPosts().filter(x=>x.playId===p.id):[])}</section>`;document.getElementById('roleDetail3').scrollIntoView({behavior:'smooth'});}
+function editRole3(i){if(!admin)return;const [k]=roleGroups3()[i],m=db.rolesMeta?.[k]||{};openModal('编辑角色档案',[['photo','角色照片 HTTPS 网址'],['bio','角色简介'],['quote','经典台词']].map(([x,l])=>`<div class="field"><label>${l}</label><textarea name="${x}">${esc(m[x]||'')}</textarea></div>`).join(''),f=>{db.rolesMeta||={};db.rolesMeta[k]=Object.fromEntries(f.entries());saveDB();closeModal();render();});}
+let heatYear3=Number(day3().slice(0,4));
+function heat3(){const years=[...new Set([heatYear3,Number(day3().slice(0,4)),...db.records.map(r=>Number(r.date?.slice(0,4))).filter(x=>x>=1900&&x<=2200)])].sort((a,b)=>b-a);const counts={};db.records.forEach(r=>counts[r.date]=(counts[r.date]||0)+1);let d=new Date(Date.UTC(heatYear3,0,1)),cells='<span></span>'.repeat((d.getUTCDay()+6)%7);while(d.getUTCFullYear()===heatYear3){const k=d.toISOString().slice(0,10),n=counts[k]||0;cells+=`<span title="${k} · ${n} 场" style="background:${['#eee','#bbb','#888','#444','#111'][Math.min(n,4)]}"></span>`;d.setUTCDate(d.getUTCDate()+1);}return `<section class="panel"><h3>演出热力日历</h3><select onchange="heatYear3=Number(this.value);render()">${years.map(y=>`<option ${y===heatYear3?'selected':''}>${y}</option>`).join('')}</select><p>周一至周日 · 颜色越深场次越多 · 含未来排期</p><div style="overflow:auto"><div class="heat3">${cells}</div></div><p>浅灰 0 场 / 深灰 4 场及以上</p></section>`;}
+function ticket3(i){const r=db.records[i];if(!r)return;const dialog=document.getElementById('ticketDialog3');dialog.innerHTML=`<div class="ticket3"><small>STAGE ARCHIVE / COMMEMORATIVE TICKET</small><h2>${esc(r.play)}</h2><p>${esc(db.profile?.name||'演员')} · ${esc(r.role||'')}</p><p>${esc(r.date)} ${esc(r.time||'')}</p><p>${esc(r.venue||'')}</p><h3>No. ${recordNumber(r)}</h3><p>${esc(specialLabel(r))} · 非官方纪念卡 / 非入场凭证</p></div><div class="toolbar"><button class="btn" onclick="downloadTicket3(${i})">保存 PNG</button><button class="btn" onclick="this.closest('dialog').close()">关闭</button></div>`;dialog.showModal();}
+function downloadTicket3(i){const r=db.records[i];if(!r)return;const c=document.createElement('canvas');c.width=1080;c.height=720;const x=c.getContext('2d');x.fillStyle='#f5f3ee';x.fillRect(0,0,1080,720);x.strokeStyle='#222';x.lineWidth=3;x.setLineDash([12,8]);x.strokeRect(28,28,1024,664);x.fillStyle='#111';function line(t,y,size){x.font=`${size}px sans-serif`;x.fillText(String(t||''),65,y,950);}line('STAGE ARCHIVE / COMMEMORATIVE TICKET',90,25);line(r.play,205,65);line((db.profile?.name||'演员')+' · '+(r.role||''),285,38);line(r.date+' '+(r.time||''),365,38);line(r.venue,425,30);line('NO. '+recordNumber(r),540,65);line(specialLabel(r)+' · 非官方纪念卡 / 非入场凭证',630,26);const a=document.createElement('a');a.download='stage-ticket-'+recordNumber(r)+'.png';a.href=c.toDataURL('image/png');a.click();}
+const oldRender3=render;render=function(){oldRender3();tick3();};
+render();start();setInterval(tick3,1000);
 </script>
+<dialog id="ticketDialog3"></dialog>
 </body>
 </html>
